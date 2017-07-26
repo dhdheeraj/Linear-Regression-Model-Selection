@@ -1,0 +1,175 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
+Model selection- Linear Regression
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(ggplot2)
+library(gridExtra)
+library(GGally)
+
+```
+
+#About the dataset
+The dataset consists of 804 entries and 11 variables.The data corresponds to different institutions and their respective details.The variables are <br/>
+1.tuition- fees for that institute <br/>
+2.pcttop25- rating <br/>
+3.sf_ratio- student ratio <br/>
+4.fac_comp <br/>
+5.accrate <br/>
+6.graduat- number of graduates <br/>
+7.pct_phd- number of phd students <br/>
+8.fulltime- number of fulltime students <br/>
+9.num_enroll- total enrolled students <br/>
+10.public.private- public or private institute <br/>
+
+```{r}
+setwd("C:/Users/Dheeraj/Desktop/fall 16/IE 515/hw3")
+dat<- read.csv("tuitioncc.csv")
+```
+
+#Overview of data
+Summary statistics of all variables
+
+
+```{r}
+head(dat)
+str(dat)
+summary(dat)
+```
+
+##Plotting all variables to see distributions
+
+```{r}
+###plotting all variables' histograms
+p1<-qplot(dat$tuition)
+
+p2<-qplot(dat$pcttop25)
+
+p3<-qplot(dat$sf_ratio)##outliers
+
+p4<-qplot(dat$fac_comp)##outliers
+
+p5<-qplot(dat$accrate)##outliers
+
+p6<-qplot(dat$graduat)##long tail
+
+p7<-qplot(dat$pct_phd)##outliers
+
+p8<-qplot(dat$fulltime)#outliers
+
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8, ncol = 4)
+```
+
+sf_ratio,tuition and graduat can be seen having outliers.Cleaning the outliers by
+deleting the 1st and 99th percentiles of datapoints with respect to these variables <br/>
+
+##Cleaning data
+
+```{r}
+###subsetting data to eliminate outliers above the 99th percentile
+###and below the 0.01 percentilt
+
+###cleaning tuition
+dat<-subset ( dat, 
+dat$tuition >quantile(dat$tuition,probs = 0.01) & 
+dat$tuition < quantile( dat$tuition ,probs = 0.99))
+
+###cleaning sf_ratio
+dat<-subset ( dat, 
+dat$sf_ratio >quantile(dat$sf_ratio,probs = 0.01) & 
+dat$sf_ratio < quantile( dat$sf_ratio ,probs = 0.99))
+
+###cleaning graduat
+dat<-subset ( dat, 
+dat$graduat >quantile(dat$graduat,probs = 0.01) & 
+dat$graduat < quantile( dat$graduat ,probs = 0.99))
+```
+
+##Replotting data to see if outliers are removed
+
+```{r}
+p1<-qplot(dat$tuition)
+
+p2<-qplot(dat$pcttop25)
+
+p3<-qplot(dat$sf_ratio)##outliers
+
+p4<-qplot(dat$fac_comp)##outliers
+
+p5<-qplot(dat$accrate)##outliers
+
+p6<-qplot(dat$graduat)##long tail
+
+p7<-qplot(dat$pct_phd)##outliers
+
+p8<-qplot(dat$fulltime)#outliers
+
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,p8, ncol = 4)
+```
+
+All outliers are removed.
+
+```{r}
+#install.packages("leaps")
+library("leaps")
+```
+
+#Fitting Regression model
+
+```{r}
+full<-lm(tuition~.,data=dat)
+summary(full)
+```
+
+A linear regression model is fit between tuition and all the variables.From the p values, there are certain variables which do not have significant effect on the tuition and thus have very high values which can be eliminated.There could be an increase in the adjusted R squared value and more importantly the dimensionality reduces.The problem of overfitting also can be solved by selecting the required features. <br/>
+
+##Model selection in R
+
+we can perform forward subset selection,backward subset selection or both to find the best Linear regression model.The step function in R helps in applying the algorithms automatically.<br/>
+
+###Fitting empty model
+
+```{r}
+none<- lm(tuition ~ 1, data = dat)
+none
+summary(none)
+```
+
+###Fitting full model
+
+```{r}
+all <- lm(tuition ~ .,data=dat)
+all
+```
+
+##Forward selection
+The step function starts from 0 variable model and adds a variable and checks the AIC value.It then adds anothe variable and determines the AIC value and compares it with the model, if the AIC value is higher it drops the variable and picks up another variable.The function performs this by adding and dropping variables from the model depending on the AIC values.
+It selects the model which has the lowest AIC value.
+```{r}
+step(none,scope=list(lower=none,upper=all),direction="forward")
+```
+
+##Final model after forward selection
+```{r}
+model <-lm(tuition ~ graduat + sf_ratio + fac_comp + public.private + 
+    alumni + pct_phd + num_enrl + fulltime, data = dat)
+summary(model)
+```
+
+##Backward  selection
+It is same as that of forward selection, but in this case it drops variables starting from a full model.
+```{r}
+step(all,data=dat,direction="backward")
+
+```
+Same model obtained as obtained by forward elimination.
+
+#Final model 
+The p values of all selected variables are less than 0.05 which suggests that all the variables have significant effect on the tuition.Though the improvement in R squared value is not very significant, we have obtained reduced dimensionality which is important and valuable in case of large datasets.
+```{r}
+summary(model)
+```
